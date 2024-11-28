@@ -39,7 +39,7 @@ mqttClient.on("message", async (topic, message) => {
     // Save the temperature data to MongoDB
     try {
       if (db) {
-        const collection = db.collection("temperature_readings"); // Collection name: 'temperature_readings'
+        const collection = db.collection("temperature_readings");
         const result = await collection.insertOne({
           temperature: parseFloat(temperatureData),
           timestamp: new Date(),
@@ -60,7 +60,7 @@ app.get("/clients/1/data.json", (req, res) => {
   });
 });
 
-// REST API endpoint to retrieve historical data
+// REST API endpoint to retrieve all historical data
 app.get("/clients/1/data/history", async (req, res) => {
   try {
     if (db) {
@@ -69,7 +69,38 @@ app.get("/clients/1/data/history", async (req, res) => {
         .find()
         .sort({ timestamp: -1 })
         .limit(10)
-        .toArray(); // Get the last 10 readings
+        .toArray();
+      res.json(history);
+    } else {
+      res.status(500).send("Database not initialized");
+    }
+  } catch (err) {
+    console.error("Failed to retrieve data:", err);
+    res.status(500).send("Failed to retrieve data");
+  }
+});
+
+// REST API endpoint to retrieve historical data for a specific date range
+app.get("/clients/1/data/history/range", async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res.status(400).send("Please provide both start and end dates");
+  }
+
+  try {
+    if (db) {
+      const collection = db.collection("temperature_readings");
+      const history = await collection
+        .find({
+          timestamp: {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate),
+          },
+        })
+        .sort({ timestamp: 1 })
+        .toArray();
+
       res.json(history);
     } else {
       res.status(500).send("Database not initialized");

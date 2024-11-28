@@ -50,7 +50,7 @@
       /* Data Boxes Styling */
       .data-box {
         background-color: #ffffff;
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         flex: 1 1 300px;
@@ -58,10 +58,49 @@
         text-align: center;
       }
 
+      /* History Controls */
+      .history-controls {
+        margin-bottom: 10px;
+      }
+
+      /* History List Styling */
+      #temperature-history-container {
+        max-height: 200px;
+        overflow-y: auto;
+        text-align: left;
+      }
+
+      #temperature-history {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      #temperature-history li {
+        background-color: #f1f1f1;
+        padding: 3px; /* Reduced padding for more compact display */
+        border-radius: 5px;
+        margin-bottom: 3px; /* Reduced margin for closer display of items */
+        display: flex;
+        align-items: center;
+        gap: 20px; /* Increased gap for better spacing between different elements (temperature, date, time) */
+      }
+
+      .temp-icon,
+      .time-icon {
+        margin-right: 0; /* Removed extra spacing between icons and their values */
+      }
+
+      .temperature-entry {
+        display: flex;
+        align-items: center;
+        gap: 20px; /* Proper spacing between temperature, date, and time */
+      }
+
       /* Chart Container Styling */
       .chart-container {
         background-color: #ffffff;
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         width: 100%;
@@ -102,12 +141,26 @@
           <p>Temperature: <span id="temperature">Loading...</span> °C</p>
         </div>
 
-        <!-- Temperature History List -->
+        <!-- Temperature History List with Date Picker -->
         <div class="data-box">
           <h2>Temperature History</h2>
-          <ul id="temperature-history">
-            <li>Loading history...</li>
-          </ul>
+          <div class="history-controls">
+            <div id="realTimeControls">
+              <button onclick="enableRealTimeView()">Real-Time View</button>
+            </div>
+            <div id="historicalControls">
+              <label for="startDate">Start Date:</label>
+              <input type="date" id="startDate" />
+              <label for="endDate">End Date:</label>
+              <input type="date" id="endDate" />
+              <button onclick="fetchCustomRange()">View Data</button>
+            </div>
+          </div>
+          <div id="temperature-history-container">
+            <ul id="temperature-history">
+              <li>Loading history...</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -124,6 +177,20 @@
 
     <script>
       let temperatureChart;
+      let realTimeInterval;
+
+      function startRealTimeUpdates() {
+        // Clear any existing interval to avoid duplicates
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+        }
+
+        // Set interval to refresh real-time data every 5 seconds
+        realTimeInterval = setInterval(() => {
+          fetchData();
+          fetchHistory();
+        }, 5000);
+      }
 
       async function fetchData() {
         try {
@@ -151,32 +218,114 @@
             throw new Error("Network response was not ok");
           }
           const history = await response.json();
-
-          // Update the history list
-          const historyList = document.getElementById("temperature-history");
-          historyList.innerHTML = "";
-          const timestamps = [];
-          const temperatures = [];
-
-          history.forEach((record) => {
-            const listItem = document.createElement("li");
-            listItem.innerText = `Temperature: ${
-              record.temperature
-            } °C, Time: ${new Date(record.timestamp).toLocaleString()}`;
-            historyList.appendChild(listItem);
-
-            // Prepare data for the chart
-            timestamps.push(new Date(record.timestamp).toLocaleTimeString());
-            temperatures.push(record.temperature);
-          });
-
-          // Draw or update the chart
-          drawOrUpdateChart(timestamps, temperatures);
+          updateHistoryUI(history);
         } catch (error) {
           console.error("Failed to fetch history:", error);
           document.getElementById("temperature-history").innerText =
             "Error fetching history";
         }
+      }
+
+      async function fetchCustomRange() {
+        // Clear the interval to stop real-time updates while viewing custom range
+        clearInterval(realTimeInterval);
+
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        if (!startDate || !endDate) {
+          alert("Please select both start and end dates.");
+          return;
+        }
+
+        try {
+          // Add time to the end date to include the full day
+          const adjustedEndDate = new Date(endDate);
+          adjustedEndDate.setHours(23, 59, 59, 999); // Set end date to the end of the day
+
+          // Format the adjusted end date back to ISO string for the request
+          const formattedEndDate = adjustedEndDate.toISOString();
+
+          // Fetch the historical data for the custom range
+          const response = await fetch(
+            `http://localhost:3000/clients/1/data/history/range?startDate=${startDate}&endDate=${formattedEndDate}`
+          );
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          const history = await response.json();
+          updateHistoryUI(history);
+        } catch (error) {
+          console.error("Failed to fetch custom range data:", error);
+          document.getElementById("temperature-history").innerText =
+            "Error fetching data for the selected range";
+        }
+      }
+
+      function enableRealTimeView() {
+        // Start real-time updates
+        startRealTimeUpdates();
+
+        // Fetch current data to initialize the real-time view
+        fetchData();
+        fetchHistory();
+      }
+
+      function updateHistoryUI(history) {
+        const historyList = document.getElementById("temperature-history");
+        historyList.innerHTML = "";
+        const timestamps = [];
+        const temperatures = [];
+
+        history.forEach((record) => {
+          const listItem = document.createElement("li");
+          listItem.classList.add("temperature-entry");
+
+          // Create icon for temperature
+          const tempIcon = document.createElement("span");
+          tempIcon.className = "temp-icon";
+          tempIcon.innerHTML = "🌡️";
+
+          // Create text for temperature value
+          const tempText = document.createElement("span");
+          tempText.innerText = `${record.temperature} °C`;
+
+          // Create text for date with label "Date:"
+          const dateText = document.createElement("span");
+          dateText.innerText = `Date: ${new Date(
+            record.timestamp
+          ).toLocaleDateString()}`;
+
+          // Create icon for timestamp (clock icon)
+          const timeIcon = document.createElement("span");
+          timeIcon.className = "time-icon";
+          timeIcon.innerHTML = "🕒";
+
+          // Create text for time value (removing seconds)
+          const timeText = document.createElement("span");
+          const timeString = new Date(record.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          timeText.innerText = `${timeString}`;
+
+          // Append elements to the list item in correct order
+          listItem.appendChild(tempIcon);
+          listItem.appendChild(tempText);
+          listItem.appendChild(dateText);
+          listItem.appendChild(timeIcon);
+          listItem.appendChild(timeText);
+
+          // Add list item to the history list
+          historyList.appendChild(listItem);
+
+          // Prepare data for the chart
+          timestamps.push(timeString);
+          temperatures.push(record.temperature);
+        });
+
+        // Draw or update the chart
+        drawOrUpdateChart(timestamps, temperatures);
       }
 
       function drawOrUpdateChart(labels, data) {
@@ -227,15 +376,8 @@
         }
       }
 
-      // Fetch data once on page load
-      fetchData();
-      fetchHistory();
-
-      // Update data every 5 seconds without reloading the page
-      setInterval(function () {
-        fetchData();
-        fetchHistory();
-      }, 5000); // 5000 milliseconds = 5 seconds
+      // Start real-time updates initially
+      enableRealTimeView();
     </script>
   </body>
 </html>
