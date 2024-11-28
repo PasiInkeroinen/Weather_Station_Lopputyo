@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Station</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        text-align: center;
+        margin-top: 50px;
+      }
+      .data-box {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        display: inline-block;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+      }
+      p,
+      ul {
+        font-size: 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="data-box">
+      <h1>Weather Station Data</h1>
+      <p>Temperature: <span id="temperature">Loading...</span> °C</p>
+    </div>
+
+    <div class="data-box">
+      <h2>Temperature History</h2>
+      <ul id="temperature-history">
+        <li>Loading history...</li>
+      </ul>
+    </div>
+
+    <script>
+      async function fetchData() {
+        try {
+          const response = await fetch(
+            "http://localhost:3000/clients/1/data.json"
+          );
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          const data = await response.json();
+          document.getElementById("temperature").innerText = data.temperature;
+        } catch (error) {
+          console.error("Failed to fetch data:", error);
+          document.getElementById("temperature").innerText =
+            "Error fetching data";
+        }
+      }
+
+      async function fetchHistory() {
+        try {
+          const response = await fetch(
+            "http://localhost:3000/clients/1/data/history"
+          );
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          const history = await response.json();
+          const historyList = document.getElementById("temperature-history");
+          historyList.innerHTML = "";
+
+          history.forEach((record) => {
+            const listItem = document.createElement("li");
+            listItem.innerText = `Temperature: ${
+              record.temperature
+            } °C, Time: ${new Date(record.timestamp).toLocaleString()}`;
+            historyList.appendChild(listItem);
+          });
+        } catch (error) {
+          console.error("Failed to fetch history:", error);
+          document.getElementById("temperature-history").innerText =
+            "Error fetching history";
+        }
+      }
+
+      // Fetch data once on page load
+      fetchData();
+      fetchHistory();
+    </script>
+  </body>
+</html>
