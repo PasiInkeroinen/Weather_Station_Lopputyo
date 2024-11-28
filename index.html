@@ -3,48 +3,128 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Weather Station</title>
+    <title>Weather Station Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+      /* General Styles */
       body {
         font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
-        text-align: center;
-        margin-top: 50px;
+        background-color: #f9f9f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        line-height: 1.6;
       }
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+      }
+
+      /* Header Styles */
+      header {
+        background-color: #00796b;
+        color: #ffffff;
+        padding: 20px;
+        text-align: center;
+      }
+
+      /* Main Content Styles */
+      main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+
+      /* Container for Different Sections */
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        max-width: 1200px;
+        width: 100%;
+        gap: 20px;
+      }
+
+      /* Data Boxes Styling */
       .data-box {
         background-color: #ffffff;
         padding: 20px;
-        border-radius: 8px;
-        display: inline-block;
+        border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        flex: 1 1 300px;
+        max-width: 45%;
+        text-align: center;
       }
-      h1 {
-        font-size: 2rem;
+
+      /* Chart Container Styling */
+      .chart-container {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 700px;
+        text-align: center;
       }
-      h2 {
-        font-size: 1.5rem;
+
+      /* Footer Styling */
+      footer {
+        background-color: #00796b;
+        color: #ffffff;
+        text-align: center;
+        padding: 10px;
+        position: relative;
+        bottom: 0;
+        width: 100%;
       }
-      p,
-      ul {
-        font-size: 1.2rem;
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .data-box,
+        .chart-container {
+          max-width: 100%;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="data-box">
-      <h1>Weather Station Data</h1>
-      <p>Temperature: <span id="temperature">Loading...</span> °C</p>
-    </div>
+    <header>
+      <h1>Weather Station Dashboard</h1>
+    </header>
 
-    <div class="data-box">
-      <h2>Temperature History</h2>
-      <ul id="temperature-history">
-        <li>Loading history...</li>
-      </ul>
-    </div>
+    <main>
+      <div class="container">
+        <!-- Current Temperature Box -->
+        <div class="data-box">
+          <h2>Current Temperature</h2>
+          <p>Temperature: <span id="temperature">Loading...</span> °C</p>
+        </div>
+
+        <!-- Temperature History List -->
+        <div class="data-box">
+          <h2>Temperature History</h2>
+          <ul id="temperature-history">
+            <li>Loading history...</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Temperature Chart Section -->
+      <div class="chart-container">
+        <h2>Temperature History Chart</h2>
+        <canvas id="temperatureChart" width="400" height="200"></canvas>
+      </div>
+    </main>
+
+    <footer>
+      <p>Weather Station Project - &copy; 2024</p>
+    </footer>
 
     <script>
+      let temperatureChart;
+
       async function fetchData() {
         try {
           const response = await fetch(
@@ -71,8 +151,12 @@
             throw new Error("Network response was not ok");
           }
           const history = await response.json();
+
+          // Update the history list
           const historyList = document.getElementById("temperature-history");
           historyList.innerHTML = "";
+          const timestamps = [];
+          const temperatures = [];
 
           history.forEach((record) => {
             const listItem = document.createElement("li");
@@ -80,7 +164,14 @@
               record.temperature
             } °C, Time: ${new Date(record.timestamp).toLocaleString()}`;
             historyList.appendChild(listItem);
+
+            // Prepare data for the chart
+            timestamps.push(new Date(record.timestamp).toLocaleTimeString());
+            temperatures.push(record.temperature);
           });
+
+          // Draw or update the chart
+          drawOrUpdateChart(timestamps, temperatures);
         } catch (error) {
           console.error("Failed to fetch history:", error);
           document.getElementById("temperature-history").innerText =
@@ -88,9 +179,63 @@
         }
       }
 
+      function drawOrUpdateChart(labels, data) {
+        const ctx = document
+          .getElementById("temperatureChart")
+          .getContext("2d");
+
+        if (temperatureChart) {
+          // Update the chart data
+          temperatureChart.data.labels = labels;
+          temperatureChart.data.datasets[0].data = data;
+          temperatureChart.update();
+        } else {
+          // Create the chart if it doesn't exist
+          temperatureChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: "Temperature (°C)",
+                  data: data,
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  borderWidth: 2,
+                  fill: false,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: "Time",
+                  },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: "Temperature (°C)",
+                  },
+                  beginAtZero: false,
+                },
+              },
+            },
+          });
+        }
+      }
+
       // Fetch data once on page load
       fetchData();
       fetchHistory();
+
+      // Update data every 5 seconds without reloading the page
+      setInterval(function () {
+        fetchData();
+        fetchHistory();
+      }, 5000); // 5000 milliseconds = 5 seconds
     </script>
   </body>
 </html>
