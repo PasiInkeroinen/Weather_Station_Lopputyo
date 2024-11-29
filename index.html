@@ -292,9 +292,8 @@
 
           // Create text for date with label "Date:"
           const dateText = document.createElement("span");
-          dateText.innerText = `Date: ${new Date(
-            record.timestamp
-          ).toLocaleDateString()}`;
+          const dateString = new Date(record.timestamp).toLocaleDateString();
+          dateText.innerText = `Date: ${dateString}`;
 
           // Create icon for timestamp (clock icon)
           const timeIcon = document.createElement("span");
@@ -320,7 +319,8 @@
           historyList.appendChild(listItem);
 
           // Prepare data for the chart
-          timestamps.push(timeString);
+          const fullDateTimeString = `${dateString} ${timeString}`;
+          timestamps.push(fullDateTimeString); // Use both date and time for the label
           temperatures.push(record.temperature);
         });
 
@@ -360,7 +360,7 @@
                 x: {
                   title: {
                     display: true,
-                    text: "Time",
+                    text: "Date and Time",
                   },
                 },
                 y: {
