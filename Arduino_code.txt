@@ -93,7 +93,7 @@ void reconnect() {
       Serial.print(mqttClient.state());
       Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
-      delay(20000);
+      delay(5000);
     }
   }
 }
