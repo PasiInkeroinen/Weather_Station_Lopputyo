@@ -3,7 +3,7 @@ const mqtt = require("mqtt");
 
 // Set up the connection options
 const mqttOptions = {
-  host: "192.168.16.191", // Replace 'localhost' with your broker's IP address if needed
+  host: "172.20.49.13", // Replace 'localhost' with your broker's IP address if needed
   port: 1883,
 };
 
